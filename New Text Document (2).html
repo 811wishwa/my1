@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Link Saver Chat</title>
+  <style>
+    /* Add your CSS styles here */
+  </style>
+</head>
+<body>
+  <h2>💾 Link Saver Chat</h2>
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <input type="text" id="message-input" placeholder="Type message or paste a link..." />
+    <button id="send-btn">Send</button>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const input = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    const apiKeys = {
+      linkPreview: 'YOUR_LINKPREVIEW_API_KEY',
+      apyHub: 'YOUR_APYHUB_API_KEY',
+      peekalink: 'YOUR_PEEKALINK_API_KEY',
+      openGraph: 'YOUR_OPENGRAPH_API_KEY',
+      jsonLink: null // No API key required
+    };
+
+    const apiUrls = {
+      linkPreview: 'https://api.linkpreview.net/',
+      apyHub: 'https://api.apyhub.com/link-preview/v1/',
+      peekalink: 'https://api.peekalink.io/v1/',
+      openGraph: 'https://opengraph.io/api/og/',
+      jsonLink: 'https://jsonlink.io/api/extract'
+    };
+
+    sendBtn.onclick = sendMessage;
+    input.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+
+    function extractUrls(text) {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return text.match(urlRegex);
+    }
+
+    async function fetchPreview(url) {
+      const apis = [
+        { name: 'linkPreview', url: apiUrls.linkPreview, key: apiKeys.linkPreview },
+        { name: 'apyHub', url: apiUrls.apyHub, key: apiKeys.apyHub },
+        { name: 'peekalink', url: apiUrls.peekalink, key: apiKeys.peekalink },
+        { name: 'openGraph', url: apiUrls.openGraph, key: apiKeys.openGraph },
+        { name: 'jsonLink', url: apiUrls.jsonLink, key: apiKeys.jsonLink }
+      ];
+
+      for (let api of apis) {
+        try {
+          const res = await fetch(`${api.url}?q=${encodeURIComponent(url)}&key=${api.key}`);
+          const data = await res.json();
+          if (data.title || data.image) {
+            return {
+              title: data.title,
+              description: data.description,
+              image: data.image
+            };
+          }
+        } catch (error) {
+          console.warn(`${api.name} failed: ${error.message}`);
+        }
+      }
+      return null;
+    }
+
+    async function showLinkPreview(url, container) {
+      const data = await fetchPreview(url);
+      if (data && (data.title || data.image)) {
+        const card = document.createElement("div");
+        card.className = "link-preview";
+        card.innerHTML = `
+          <img src="${data.image || ''}" alt="">
+          <div>
+            <h4>${data.title || 'No title'}</h4>
+            <p>${data.description || ''}</p>
+            <a href="${url}" target="_blank">${url}</a>
+          </div>
+        `;
+        container.appendChild(card);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
+
+    function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "message";
+      msgDiv.textContent = text;
+      chatBox.appendChild(msgDiv);
+
+      const urls = extractUrls(text);
+      if (urls && urls.length > 0) {
+        showLinkPreview(urls[0], msgDiv);
+      }
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
