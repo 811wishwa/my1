@@ -44,10 +44,9 @@ const sendBtn = document.getElementById("send-btn");
 const apiSelect = document.getElementById("api-select");
 
 const apiKeys = {
-  linkPreview: '35aa52061770c8f37cf9f81f7a8a665f',
-  microlink: null,
-  iframely: '35aa52061770c8f37cf9f81f7a8a665f',
-  noembed: null
+  linkPreview: 'a22398b655223c837bf83d7aa173fef2',
+  microlink: null, // Optional API key for testing
+  iframely: '35aa52061770c8f37cf9f81f7a8a665f'
 };
 
 function extractUrls(text) {
@@ -63,15 +62,21 @@ async function fetchPreview(url, apiName) {
       return { title: data.title, description: data.description, image: data.image };
 
     } else if(apiName === 'microlink'){
-      const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
+      let endpoint = `https://api.microlink.io?url=${encodeURIComponent(url)}`;
+      if(apiKeys.microlink) endpoint += `&apiKey=${apiKeys.microlink}`;
+      const res = await fetch(endpoint);
       const data = await res.json();
       return { title: data.data.title, description: data.data.description, image: data.data.image?.url };
 
     } else if(apiName === 'iframely'){
       const res = await fetch(`https://iframe.ly/api/iframely?url=${encodeURIComponent(url)}&key=${apiKeys.iframely}`);
       const data = await res.json();
-      const meta = data.meta || {};
-      return { title: meta.title, description: meta.description, image: meta.image };
+      let imageUrl = data.meta?.image;
+      if(!imageUrl && data.links && data.links.length > 0){
+        const linkImg = data.links.find(l => l.rel && (l.rel.includes('thumbnail') || l.rel.includes('image')));
+        if(linkImg) imageUrl = linkImg.href;
+      }
+      return { title: data.meta?.title, description: data.meta?.description, image: imageUrl };
 
     } else if(apiName === 'noembed'){
       const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
