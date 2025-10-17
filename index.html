@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,8 +46,8 @@ const apiSelect = document.getElementById("api-select");
 
 const apiKeys = {
   linkPreview: 'a22398b655223c837bf83d7aa173fef2',
-  iframely: '35aa52061770c8f37cf9f81f7a8a665f',
-  microlink: null // optional, can be your Microlink key
+  iframely: '7b7bdfd747591112e2adda', // fixed key for Iframely
+  microlink: null // optional Microlink API key
 };
 
 function extractUrls(text) {
@@ -66,18 +67,14 @@ async function fetchPreview(url, apiName) {
       if(apiKeys.microlink) endpoint += `&apiKey=${apiKeys.microlink}`;
       const res = await fetch(endpoint);
       const data = await res.json();
-      return {
-        title: data.data?.title,
-        description: data.data?.description,
-        image: data.data?.image?.url
-      };
+      return { title: data.data?.title, description: data.data?.description, image: data.data?.image?.url };
 
     } else if(apiName === 'iframely'){
-      const res = await fetch(`https://iframe.ly/api/iframely?url=${encodeURIComponent(url)}&key=${apiKeys.iframely}`);
+      const res = await fetch(`https://iframe.ly/api/iframely?url=${encodeURIComponent(url)}&api_key=${apiKeys.iframely}`);
       const data = await res.json();
       let imageUrl = data.meta?.image;
       if(!imageUrl && data.links && data.links.length>0){
-        const linkImg = data.links.find(l=>l.rel && (l.rel.includes('thumbnail') || l.rel.includes('image')));
+        const linkImg = data.links.find(l => l.rel && (l.rel.includes('thumbnail') || l.rel.includes('image')));
         if(linkImg) imageUrl = linkImg.href;
       }
       return { title: data.meta?.title, description: data.meta?.description, image: imageUrl };
