@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>💾 Link Saver Chat</title>
 <style>
-  body { font-family: Arial; background: #f4f4f4; padding: 20px; }
-  h2 { text-align: center; }
-  #chat-box { background: #fff; border-radius: 10px; padding: 10px; height: 400px; overflow-y: auto; }
-  .message { background: #e6f3ff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
-  .link-preview { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-top: 5px; display:flex; gap:10px; }
-  .link-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
-  #input-area { display:flex; gap: 8px; margin-top:10px; }
-  input, select, button { padding: 8px; border-radius:5px; border:1px solid #ccc; }
-  button { background: #007bff; color: white; cursor:pointer; border:none; }
+body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+h2 { text-align: center; }
+#chat-box { background: #fff; border-radius: 10px; padding: 10px; height: 400px; overflow-y: auto; }
+.message { background: #e6f3ff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+.link-preview { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-top: 5px; display:flex; gap:10px; }
+.link-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
+#input-area { display:flex; gap: 8px; margin-top:10px; }
+input, select, button { padding: 8px; border-radius:5px; border:1px solid #ccc; }
+button { background: #007bff; color: white; cursor:pointer; border:none; }
 </style>
 </head>
 <body>
+
 <h2>💾 Link Saver Chat</h2>
 
 <div style="text-align:center; margin-bottom:10px;">
@@ -45,8 +45,8 @@ const apiSelect = document.getElementById("api-select");
 
 const apiKeys = {
   linkPreview: 'a22398b655223c837bf83d7aa173fef2',
-  microlink: null, // Optional API key for testing
-  iframely: '35aa52061770c8f37cf9f81f7a8a665f'
+  iframely: '35aa52061770c8f37cf9f81f7a8a665f',
+  microlink: null // optional, can be your Microlink key
 };
 
 function extractUrls(text) {
@@ -62,18 +62,22 @@ async function fetchPreview(url, apiName) {
       return { title: data.title, description: data.description, image: data.image };
 
     } else if(apiName === 'microlink'){
-      let endpoint = `https://api.microlink.io?url=${encodeURIComponent(url)}`;
+      let endpoint = `https://api.microlink.io?url=${encodeURIComponent(url)}&meta=true`;
       if(apiKeys.microlink) endpoint += `&apiKey=${apiKeys.microlink}`;
       const res = await fetch(endpoint);
       const data = await res.json();
-      return { title: data.data.title, description: data.data.description, image: data.data.image?.url };
+      return {
+        title: data.data?.title,
+        description: data.data?.description,
+        image: data.data?.image?.url
+      };
 
     } else if(apiName === 'iframely'){
       const res = await fetch(`https://iframe.ly/api/iframely?url=${encodeURIComponent(url)}&key=${apiKeys.iframely}`);
       const data = await res.json();
       let imageUrl = data.meta?.image;
-      if(!imageUrl && data.links && data.links.length > 0){
-        const linkImg = data.links.find(l => l.rel && (l.rel.includes('thumbnail') || l.rel.includes('image')));
+      if(!imageUrl && data.links && data.links.length>0){
+        const linkImg = data.links.find(l=>l.rel && (l.rel.includes('thumbnail') || l.rel.includes('image')));
         if(linkImg) imageUrl = linkImg.href;
       }
       return { title: data.meta?.title, description: data.meta?.description, image: imageUrl };
@@ -92,7 +96,6 @@ async function fetchPreview(url, apiName) {
 async function showLinkPreview(url, container){
   const apiName = apiSelect.value;
   const preview = await fetchPreview(url, apiName);
-
   if(preview && (preview.title || preview.image)){
     const card = document.createElement('div');
     card.className = 'link-preview';
@@ -124,8 +127,7 @@ function sendMessage(){
   chatBox.appendChild(msgDiv);
 
   const urls = extractUrls(text);
-  if(urls && urls.length > 0) showLinkPreview(urls[0], msgDiv);
-
+  if(urls && urls.length>0) showLinkPreview(urls[0], msgDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -134,4 +136,5 @@ input.addEventListener("keypress", e => { if(e.key === "Enter") sendMessage(); }
 </script>
 </body>
 </html>
+
 
