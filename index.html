@@ -6,67 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>💾 Link Saver Chat</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 20px;
-    }
-
-    h2 {
-      text-align: center;
-    }
-
-    #chat-box {
-      background: #fff;
-      border-radius: 10px;
-      padding: 10px;
-      height: 400px;
-      overflow-y: auto;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-
-    .message {
-      background: #e6f3ff;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin: 8px 0;
-    }
-
-    .link-preview {
-      background: #f9f9f9;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 8px;
-      margin-top: 5px;
-      display: flex;
-      gap: 10px;
-    }
-
-    .link-preview img {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: 6px;
-    }
-
-    #input-area {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    input, select, button {
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      background: #007bff;
-      color: #fff;
-      cursor: pointer;
-      border: none;
-    }
+    body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+    h2 { text-align: center; }
+    #chat-box { background: #fff; border-radius: 10px; padding: 10px; height: 400px; overflow-y: auto; }
+    .message { background: #e6f3ff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+    .link-preview { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-top: 5px; display:flex; gap:10px; }
+    .link-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
+    #input-area { display:flex; gap: 8px; margin-top:10px; }
+    input, select, button { padding: 8px; border-radius:5px; border:1px solid #ccc; }
+    button { background: #007bff; color: white; cursor:pointer; border:none; }
   </style>
 </head>
 <body>
@@ -76,10 +24,8 @@
     <label for="api-select">Select API: </label>
     <select id="api-select">
       <option value="linkPreview">LinkPreview</option>
-      <option value="apyHub">ApyHub</option>
-      <option value="peekalink">Peekalink</option>
-      <option value="openGraph">OpenGraph.io</option>
-      <option value="jsonLink">JSONLink</option>
+      <option value="microlink">Microlink.io</option>
+      <option value="noembed">Noembed</option>
     </select>
   </div>
 
@@ -97,23 +43,10 @@
     const apiSelect = document.getElementById("api-select");
 
     const apiKeys = {
-      linkPreview: 'a22398b655223c837bf83d7aa173fef2',
-      apyHub: 'APY0aEeOsohWA4vDrRBaxU2TtbaL0F9rf40QsMfmQ9ztifhtQE4GKQjHgUunI5kYud0SVoxyhsCrL',
-      peekalink: 'sk_d1h685o7ugdve4e0qumolnnbvnecb869',
-      openGraph: 'a5390c61-d0b7-4823-b062-7f4515bdafde',
-      jsonLink: null
+      linkPreview: 'YOUR_LINKPREVIEW_KEY', // Get key from https://www.linkpreview.net/
+      microlink: null, // Optional, free basic plan
+      noembed: null // No key needed
     };
-
-    const apiUrls = {
-      linkPreview: 'https://api.linkpreview.net',
-      apyHub: 'https://api.apyhub.com/data/vault/webpage-preview',
-      peekalink: 'https://api.peekalink.io/v1/metadata',
-      openGraph: 'https://opengraph.io/api/1.1/site',
-      jsonLink: 'https://jsonlink.io/api/extract'
-    };
-
-    sendBtn.onclick = sendMessage;
-    input.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
 
     function extractUrls(text) {
       const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -122,69 +55,34 @@
 
     async function fetchPreview(url, apiName) {
       try {
-        let res, data;
-        const key = apiKeys[apiName];
-        const apiUrl = apiUrls[apiName];
+        if(apiName === 'linkPreview'){
+          const res = await fetch(`https://api.linkpreview.net/?key=${apiKeys.linkPreview}&q=${encodeURIComponent(url)}`);
+          const data = await res.json();
+          return { title: data.title, description: data.description, image: data.image };
 
-        switch (apiName) {
-          case 'linkPreview':
-            res = await fetch(`${apiUrl}?key=${key}&q=${encodeURIComponent(url)}`);
-            data = await res.json();
-            return { title: data.title, description: data.description, image: data.image };
+        } else if(apiName === 'microlink'){
+          const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
+          const data = await res.json();
+          return { title: data.data.title, description: data.data.description, image: data.data.image?.url };
 
-          case 'apyHub':
-            res = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apy-token': key
-              },
-              body: JSON.stringify({ url })
-            });
-            data = await res.json();
-            if (data.data) data = data.data;
-            return { title: data.title, description: data.description, image: data.image };
-
-          case 'peekalink':
-            res = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': key
-              },
-              body: JSON.stringify({ link: url })
-            });
-            data = await res.json();
-            return { title: data.title, description: data.description, image: data.image?.url || data.image };
-
-          case 'openGraph':
-            res = await fetch(`${apiUrl}/${encodeURIComponent(url)}?app_id=${key}`);
-            data = await res.json();
-            return {
-              title: data.hybridGraph?.title,
-              description: data.hybridGraph?.description,
-              image: data.hybridGraph?.image
-            };
-
-          case 'jsonLink':
-            res = await fetch(`${apiUrl}?url=${encodeURIComponent(url)}`);
-            data = await res.json();
-            return { title: data.title, description: data.description, image: data.images?.[0] };
+        } else if(apiName === 'noembed'){
+          const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+          const data = await res.json();
+          return { title: data.title, description: data.author_name || '', image: data.thumbnail_url };
         }
-      } catch (error) {
-        console.warn(`${apiName} failed: ${error.message}`);
+      } catch(err){
+        console.warn(`${apiName} failed: ${err.message}`);
         return null;
       }
-      return null;
     }
 
-    async function showLinkPreview(url, container) {
+    async function showLinkPreview(url, container){
       const apiName = apiSelect.value;
       const preview = await fetchPreview(url, apiName);
 
-      if (preview && (preview.title || preview.image)) {
-        const card = document.createElement("div");
-        card.className = "link-preview";
+      if(preview && (preview.title || preview.image)){
+        const card = document.createElement('div');
+        card.className = 'link-preview';
         card.innerHTML = `
           ${preview.image ? `<img src="${preview.image}" alt="">` : ""}
           <div>
@@ -195,28 +93,31 @@
         `;
         container.appendChild(card);
       } else {
-        const failMsg = document.createElement("div");
+        const failMsg = document.createElement('div');
         failMsg.textContent = `⚠️ No preview available from ${apiName}.`;
         container.appendChild(failMsg);
       }
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function sendMessage() {
+    function sendMessage(){
       const text = input.value.trim();
-      if (!text) return;
-      input.value = "";
+      if(!text) return;
+      input.value = '';
 
-      const msgDiv = document.createElement("div");
-      msgDiv.className = "message";
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message';
       msgDiv.textContent = text;
       chatBox.appendChild(msgDiv);
 
       const urls = extractUrls(text);
-      if (urls && urls.length > 0) showLinkPreview(urls[0], msgDiv);
+      if(urls && urls.length > 0) showLinkPreview(urls[0], msgDiv);
 
       chatBox.scrollTop = chatBox.scrollHeight;
     }
+
+    sendBtn.onclick = sendMessage;
+    input.addEventListener("keypress", e => { if(e.key === "Enter") sendMessage(); });
   </script>
 </body>
 </html>
