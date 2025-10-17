@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,14 +8,12 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      margin: 0;
+      background: #f4f4f4;
       padding: 20px;
     }
 
     h2 {
       text-align: center;
-      margin-bottom: 20px;
     }
 
     #chat-box {
@@ -53,29 +52,20 @@
     #input-area {
       display: flex;
       gap: 8px;
-      margin-top: 15px;
+      margin-top: 10px;
     }
 
-    #message-input {
-      flex: 1;
+    input, select, button {
       padding: 8px;
       border-radius: 5px;
       border: 1px solid #ccc;
     }
 
     button {
-      padding: 8px 12px;
       background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
+      color: #fff;
       cursor: pointer;
-    }
-
-    select {
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      border: none;
     }
   </style>
 </head>
@@ -88,7 +78,7 @@
       <option value="linkPreview">LinkPreview</option>
       <option value="apyHub">ApyHub</option>
       <option value="peekalink">Peekalink</option>
-      <option value="openGraph">OpenGraph</option>
+      <option value="openGraph">OpenGraph.io</option>
       <option value="jsonLink">JSONLink</option>
     </select>
   </div>
@@ -115,10 +105,10 @@
     };
 
     const apiUrls = {
-      linkPreview: 'https://api.linkpreview.net/',
-      apyHub: 'https://api.apyhub.com/link-preview/v1/',
+      linkPreview: 'https://api.linkpreview.net',
+      apyHub: 'https://api.apyhub.com/data/vault/webpage-preview',
       peekalink: 'https://api.peekalink.io/v1/metadata',
-      openGraph: 'https://opengraph.io/api/og/',
+      openGraph: 'https://opengraph.io/api/1.1/site',
       jsonLink: 'https://jsonlink.io/api/extract'
     };
 
@@ -130,66 +120,86 @@
       return text.match(urlRegex);
     }
 
-    async function fetchPreview(url, selectedApi) {
-      const api = { name: selectedApi, url: apiUrls[selectedApi], key: apiKeys[selectedApi] };
-
+    async function fetchPreview(url, apiName) {
       try {
-        let res;
-        let fullUrl;
+        let res, data;
+        const key = apiKeys[apiName];
+        const apiUrl = apiUrls[apiName];
 
-        if (api.name === "peekalink") {
-          res = await fetch(api.url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-API-Key": api.key },
-            body: JSON.stringify({ link: url })
-          });
-        } else if (api.name === "openGraph") {
-          fullUrl = `${api.url}${encodeURIComponent(url)}?app_id=${api.key}`;
-          res = await fetch(fullUrl);
-        } else if (api.name === "jsonLink") {
-          fullUrl = `${api.url}?url=${encodeURIComponent(url)}`;
-          res = await fetch(fullUrl);
-        } else {
-          fullUrl = `${api.url}?q=${encodeURIComponent(url)}&key=${api.key}`;
-          res = await fetch(fullUrl);
-        }
+        switch (apiName) {
+          case 'linkPreview':
+            res = await fetch(`${apiUrl}?key=${key}&q=${encodeURIComponent(url)}`);
+            data = await res.json();
+            return { title: data.title, description: data.description, image: data.image };
 
-        const data = await res.json();
-        if (data.title || data.image || data.description) {
-          return {
-            title: data.title || data.meta?.title,
-            description: data.description || data.meta?.description,
-            image: data.image || data.images?.[0]
-          };
+          case 'apyHub':
+            res = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apy-token': key
+              },
+              body: JSON.stringify({ url })
+            });
+            data = await res.json();
+            if (data.data) data = data.data;
+            return { title: data.title, description: data.description, image: data.image };
+
+          case 'peekalink':
+            res = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': key
+              },
+              body: JSON.stringify({ link: url })
+            });
+            data = await res.json();
+            return { title: data.title, description: data.description, image: data.image?.url || data.image };
+
+          case 'openGraph':
+            res = await fetch(`${apiUrl}/${encodeURIComponent(url)}?app_id=${key}`);
+            data = await res.json();
+            return {
+              title: data.hybridGraph?.title,
+              description: data.hybridGraph?.description,
+              image: data.hybridGraph?.image
+            };
+
+          case 'jsonLink':
+            res = await fetch(`${apiUrl}?url=${encodeURIComponent(url)}`);
+            data = await res.json();
+            return { title: data.title, description: data.description, image: data.images?.[0] };
         }
       } catch (error) {
-        console.warn(`${selectedApi} failed: ${error.message}`);
+        console.warn(`${apiName} failed: ${error.message}`);
+        return null;
       }
       return null;
     }
 
     async function showLinkPreview(url, container) {
-      const selectedApi = apiSelect.value;
-      const data = await fetchPreview(url, selectedApi);
+      const apiName = apiSelect.value;
+      const preview = await fetchPreview(url, apiName);
 
-      if (data && (data.title || data.image)) {
+      if (preview && (preview.title || preview.image)) {
         const card = document.createElement("div");
         card.className = "link-preview";
         card.innerHTML = `
-          ${data.image ? `<img src="${data.image}" alt="">` : ""}
+          ${preview.image ? `<img src="${preview.image}" alt="">` : ""}
           <div>
-            <h4>${data.title || 'No title'}</h4>
-            <p>${data.description || ''}</p>
+            <h4>${preview.title || 'No title'}</h4>
+            <p>${preview.description || ''}</p>
             <a href="${url}" target="_blank">${url}</a>
           </div>
         `;
         container.appendChild(card);
-        chatBox.scrollTop = chatBox.scrollHeight;
       } else {
         const failMsg = document.createElement("div");
-        failMsg.textContent = `⚠️ No preview available using ${selectedApi}.`;
+        failMsg.textContent = `⚠️ No preview available from ${apiName}.`;
         container.appendChild(failMsg);
       }
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     function sendMessage() {
@@ -203,12 +213,11 @@
       chatBox.appendChild(msgDiv);
 
       const urls = extractUrls(text);
-      if (urls && urls.length > 0) {
-        showLinkPreview(urls[0], msgDiv);
-      }
+      if (urls && urls.length > 0) showLinkPreview(urls[0], msgDiv);
 
       chatBox.scrollTop = chatBox.scrollHeight;
     }
   </script>
 </body>
 </html>
+
