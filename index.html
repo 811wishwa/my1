@@ -2,123 +2,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>💾 Link Saver Chat</title>
-  <style>
-    body { font-family: Arial; background: #f4f4f4; padding: 20px; }
-    h2 { text-align: center; }
-    #chat-box { background: #fff; border-radius: 10px; padding: 10px; height: 400px; overflow-y: auto; }
-    .message { background: #e6f3ff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
-    .link-preview { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-top: 5px; display:flex; gap:10px; }
-    .link-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
-    #input-area { display:flex; gap: 8px; margin-top:10px; }
-    input, select, button { padding: 8px; border-radius:5px; border:1px solid #ccc; }
-    button { background: #007bff; color: white; cursor:pointer; border:none; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💾 Link Saver Chat</title>
+<style>
+  body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+  h2 { text-align: center; }
+  #chat-box { background: #fff; border-radius: 10px; padding: 10px; height: 400px; overflow-y: auto; }
+  .message { background: #e6f3ff; border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .link-preview { background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-top: 5px; display:flex; gap:10px; }
+  .link-preview img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
+  #input-area { display:flex; gap: 8px; margin-top:10px; }
+  input, select, button { padding: 8px; border-radius:5px; border:1px solid #ccc; }
+  button { background: #007bff; color: white; cursor:pointer; border:none; }
+</style>
 </head>
 <body>
-  <h2>💾 Link Saver Chat</h2>
+<h2>💾 Link Saver Chat</h2>
 
-  <div style="text-align:center; margin-bottom:10px;">
-    <label for="api-select">Select API: </label>
-    <select id="api-select">
-      <option value="linkPreview">LinkPreview</option>
-      <option value="microlink">Microlink.io</option>
-      <option value="noembed">Noembed</option>
-    </select>
-  </div>
+<div style="text-align:center; margin-bottom:10px;">
+  <label for="api-select">Select API: </label>
+  <select id="api-select">
+    <option value="linkPreview">LinkPreview</option>
+    <option value="microlink">Microlink.io</option>
+    <option value="iframely">Iframely</option>
+    <option value="noembed">Noembed</option>
+  </select>
+</div>
 
-  <div id="chat-box"></div>
+<div id="chat-box"></div>
 
-  <div id="input-area">
-    <input type="text" id="message-input" placeholder="Type message or paste a link..." />
-    <button id="send-btn">Send</button>
-  </div>
+<div id="input-area">
+  <input type="text" id="message-input" placeholder="Type message or paste a link..." />
+  <button id="send-btn">Send</button>
+</div>
 
-  <script>
-    const chatBox = document.getElementById("chat-box");
-    const input = document.getElementById("message-input");
-    const sendBtn = document.getElementById("send-btn");
-    const apiSelect = document.getElementById("api-select");
+<script>
+const chatBox = document.getElementById("chat-box");
+const input = document.getElementById("message-input");
+const sendBtn = document.getElementById("send-btn");
+const apiSelect = document.getElementById("api-select");
 
-    const apiKeys = {
-      linkPreview: 'YOUR_LINKPREVIEW_KEY', // Get key from https://www.linkpreview.net/
-      microlink: null, // Optional, free basic plan
-      noembed: null // No key needed
-    };
+const apiKeys = {
+  linkPreview: '35aa52061770c8f37cf9f81f7a8a665f',
+  microlink: null,
+  iframely: '35aa52061770c8f37cf9f81f7a8a665f',
+  noembed: null
+};
 
-    function extractUrls(text) {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      return text.match(urlRegex);
+function extractUrls(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.match(urlRegex);
+}
+
+async function fetchPreview(url, apiName) {
+  try {
+    if(apiName === 'linkPreview'){
+      const res = await fetch(`https://api.linkpreview.net/?key=${apiKeys.linkPreview}&q=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      return { title: data.title, description: data.description, image: data.image };
+
+    } else if(apiName === 'microlink'){
+      const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      return { title: data.data.title, description: data.data.description, image: data.data.image?.url };
+
+    } else if(apiName === 'iframely'){
+      const res = await fetch(`https://iframe.ly/api/iframely?url=${encodeURIComponent(url)}&key=${apiKeys.iframely}`);
+      const data = await res.json();
+      const meta = data.meta || {};
+      return { title: meta.title, description: meta.description, image: meta.image };
+
+    } else if(apiName === 'noembed'){
+      const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      return { title: data.title, description: data.author_name || '', image: data.thumbnail_url };
     }
+  } catch(err){
+    console.warn(`${apiName} failed: ${err.message}`);
+    return null;
+  }
+}
 
-    async function fetchPreview(url, apiName) {
-      try {
-        if(apiName === 'linkPreview'){
-          const res = await fetch(`https://api.linkpreview.net/?key=${apiKeys.linkPreview}&q=${encodeURIComponent(url)}`);
-          const data = await res.json();
-          return { title: data.title, description: data.description, image: data.image };
+async function showLinkPreview(url, container){
+  const apiName = apiSelect.value;
+  const preview = await fetchPreview(url, apiName);
 
-        } else if(apiName === 'microlink'){
-          const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
-          const data = await res.json();
-          return { title: data.data.title, description: data.data.description, image: data.data.image?.url };
+  if(preview && (preview.title || preview.image)){
+    const card = document.createElement('div');
+    card.className = 'link-preview';
+    card.innerHTML = `
+      ${preview.image ? `<img src="${preview.image}" alt="">` : ""}
+      <div>
+        <h4>${preview.title || 'No title'}</h4>
+        <p>${preview.description || ''}</p>
+        <a href="${url}" target="_blank">${url}</a>
+      </div>
+    `;
+    container.appendChild(card);
+  } else {
+    const failMsg = document.createElement('div');
+    failMsg.textContent = `⚠️ No preview available from ${apiName}.`;
+    container.appendChild(failMsg);
+  }
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
-        } else if(apiName === 'noembed'){
-          const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
-          const data = await res.json();
-          return { title: data.title, description: data.author_name || '', image: data.thumbnail_url };
-        }
-      } catch(err){
-        console.warn(`${apiName} failed: ${err.message}`);
-        return null;
-      }
-    }
+function sendMessage(){
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
 
-    async function showLinkPreview(url, container){
-      const apiName = apiSelect.value;
-      const preview = await fetchPreview(url, apiName);
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'message';
+  msgDiv.textContent = text;
+  chatBox.appendChild(msgDiv);
 
-      if(preview && (preview.title || preview.image)){
-        const card = document.createElement('div');
-        card.className = 'link-preview';
-        card.innerHTML = `
-          ${preview.image ? `<img src="${preview.image}" alt="">` : ""}
-          <div>
-            <h4>${preview.title || 'No title'}</h4>
-            <p>${preview.description || ''}</p>
-            <a href="${url}" target="_blank">${url}</a>
-          </div>
-        `;
-        container.appendChild(card);
-      } else {
-        const failMsg = document.createElement('div');
-        failMsg.textContent = `⚠️ No preview available from ${apiName}.`;
-        container.appendChild(failMsg);
-      }
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
+  const urls = extractUrls(text);
+  if(urls && urls.length > 0) showLinkPreview(urls[0], msgDiv);
 
-    function sendMessage(){
-      const text = input.value.trim();
-      if(!text) return;
-      input.value = '';
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'message';
-      msgDiv.textContent = text;
-      chatBox.appendChild(msgDiv);
-
-      const urls = extractUrls(text);
-      if(urls && urls.length > 0) showLinkPreview(urls[0], msgDiv);
-
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    sendBtn.onclick = sendMessage;
-    input.addEventListener("keypress", e => { if(e.key === "Enter") sendMessage(); });
-  </script>
+sendBtn.onclick = sendMessage;
+input.addEventListener("keypress", e => { if(e.key === "Enter") sendMessage(); });
+</script>
 </body>
 </html>
 
